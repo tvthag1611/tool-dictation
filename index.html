@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Công cụ nghe chép chính tả: up audio, chia câu tự động, tua, chỉnh tốc độ, gõ và lưu bài chép ngay trên trình duyệt." />
+    <title>Chép chính tả — Nghe &amp; Chép</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎧</text></svg>" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-icon">🎧</span>
+          <span class="brand-name">Chép chính tả</span>
+        </div>
+        <div class="topbar-actions">
+          <span id="fileBadge" class="file-badge" hidden></span>
+          <button id="btnChangeAudio" class="btn btn-ghost" hidden>Đổi file audio</button>
+        </div>
+      </header>
+
+      <main id="uploadScreen" class="upload-screen">
+        <div id="dropZone" class="drop-zone" tabindex="0" role="button" aria-label="Chọn hoặc kéo thả file audio">
+          <div class="drop-inner">
+            <div class="drop-icon">🎵</div>
+            <h1>Kéo thả file audio vào đây</h1>
+            <p>hoặc <span class="link">bấm để chọn file</span> — mp3, wav, m4a, ogg, flac, webm…</p>
+            <p class="drop-note">File chỉ nằm trên máy bạn, không upload đi đâu. Tiến độ chép được lưu tự động.</p>
+          </div>
+          <input id="fileInput" type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac,.webm,.aac" hidden />
+        </div>
+      </main>
+
+      <main id="workScreen" class="work-screen" hidden>
+        <section class="player-panel" aria-label="Trình phát audio">
+          <div id="waveform" class="waveform"></div>
+
+          <div class="transport">
+            <button id="btnPrevSeg" class="btn btn-icon" title="Câu trước — Alt+←">⏮<span class="icon-sub">câu</span></button>
+            <button id="btnBack" class="btn btn-icon" title="Lùi 3 giây — Ctrl+Alt+←">↺<span class="icon-sub">3s</span></button>
+            <button id="btnPlay" class="btn btn-play" title="Phát / dừng — Space">
+              <svg class="icon-play" viewBox="0 0 24 24" width="26" height="26" fill="currentColor" aria-hidden="true"><path d="M8 5.14v13.72c0 .8.87 1.3 1.56.88l10.54-6.86a1.05 1.05 0 0 0 0-1.76L9.56 4.26A1.04 1.04 0 0 0 8 5.14Z"/></svg>
+              <svg class="icon-pause" viewBox="0 0 24 24" width="26" height="26" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+            </button>
+            <button id="btnFwd" class="btn btn-icon" title="Tới 3 giây — Ctrl+Alt+→">↻<span class="icon-sub">3s</span></button>
+            <button id="btnNextSeg" class="btn btn-icon" title="Câu kế — Alt+→">⏭<span class="icon-sub">câu</span></button>
+            <button id="btnReplaySeg" class="btn btn-icon" title="Nghe lại câu từ đầu — Ctrl (bấm-nhả) hoặc Tab">↻<span class="icon-sub">câu</span></button>
+
+            <div class="time-display">
+              <span id="timeCur">0:00</span><span class="time-sep">/</span><span id="timeTotal">0:00</span>
+            </div>
+
+            <div class="speed-group" title="Tốc độ phát — Ctrl+= tăng, Ctrl+- giảm, Ctrl+0 về 1x">
+              <button id="btnSpeedDown" class="btn btn-mini" title="Chậm hơn">−</button>
+              <button id="btnSpeedPill" class="btn btn-pill" title="Nhấn để về 1x">1.0×</button>
+              <button id="btnSpeedUp" class="btn btn-mini" title="Nhanh hơn">+</button>
+            </div>
+
+            <div class="volume-group" title="Âm lượng">
+              <span class="vol-icon" aria-hidden="true">🔊</span>
+              <input id="volume" type="range" min="0" max="1" step="0.05" value="1" aria-label="Âm lượng" />
+            </div>
+          </div>
+
+          <div class="mode-row">
+            <label class="toggle" title="Phát đúng một câu rồi tự dừng, thuận tiện cho việc gõ theo">
+              <input id="ckSentenceMode" type="checkbox" checked />
+              <span class="toggle-track"><span class="toggle-knob"></span></span>
+              Chế độ câu <small>tự dừng cuối câu</small>
+            </label>
+            <label class="toggle" title="Khi bấm phát, tự lùi lại một chút để nghe lại từ cuối">
+              <input id="ckAutoRewind" type="checkbox" checked />
+              <span class="toggle-track"><span class="toggle-knob"></span></span>
+              Tự lùi khi phát <small id="rewindSecsLabel">1.0s</small>
+            </label>
+            <input id="rewindSecs" type="range" min="0" max="3" step="0.5" value="1" aria-label="Số giây lùi khi phát" />
+            <div class="seg-status">
+              <span id="segIndex" class="seg-index"></span>
+              <span id="segHint" class="seg-hint"></span>
+            </div>
+          </div>
+        </section>
+
+        <section class="editor-panel" aria-label="Vùng soạn thảo bài chép">
+          <div class="editor-toolbar">
+            <span class="editor-title">Bài chép</span>
+            <button id="btnTimestamp" class="btn btn-ghost" title="Chèn mốc thời gian [phút:giây] tại vị trí con trỏ — Ctrl+;">🕒 Chèn mốc</button>
+            <span class="spacer"></span>
+            <span id="counter" class="counter">0 từ · 0 ký tự</span>
+            <button id="btnExport" class="btn btn-ghost" title="Tải bài chép về máy dạng .txt">⬇ Xuất .txt</button>
+          </div>
+          <textarea id="editor" placeholder="Gõ nội dung bạn nghe được vào đây… Dùng Esc để phát/dừng, Tab để nghe lại câu." spellcheck="true"></textarea>
+        </section>
+
+        <section class="segments-panel" aria-label="Danh sách câu">
+          <div class="segments-toolbar">
+            <span class="editor-title">Danh sách câu <span id="segCount" class="seg-count"></span></span>
+            <span class="spacer"></span>
+            <button id="btnResplit" class="btn btn-ghost" title="Chạy lại chia câu với khoảng lặng dài hơn">↻ Chia lại</button>
+            <label class="slider-label">Lặng tối thiểu
+              <input id="minSilence" type="range" min="200" max="1200" step="50" value="450" aria-label="Độ dài khoảng lặng tối thiểu (ms)" />
+              <span id="minSilenceVal">450ms</span>
+            </label>
+            <label class="slider-label">Nhạy cảm
+              <input id="sensitivity" type="range" min="1" max="10" step="1" value="4" aria-label="Độ nhạy phát hiện khoảng lặng" />
+            </label>
+          </div>
+          <ol id="segList" class="seg-list"></ol>
+        </section>
+      </main>
+
+      <footer class="helpbar" id="helpbar">
+        <span class="help-title">Phím tắt</span>
+        <span><kbd>Space</kbd> phát/dừng</span>
+        <span><kbd>Esc</kbd> phát/dừng (cả khi đang gõ)</span>
+        <span><kbd>Ctrl</kbd> bấm-nhả nhanh: nghe lại câu</span>
+        <span><kbd>Tab</kbd> nghe lại câu</span>
+        <span><kbd>Alt</kbd>+<kbd>←/→</kbd> câu trước/kế</span>
+        <span><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>←/→</kbd> lùi/tới 3s</span>
+        <span><kbd>Ctrl</kbd>+<kbd>;</kbd> chèn mốc thời gian</span>
+        <span><kbd>Ctrl</kbd>+<kbd>+/-/0</kbd> tốc độ</span>
+      </footer>
+
+      <div id="toast" class="toast" hidden></div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
